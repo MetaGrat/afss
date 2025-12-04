@@ -9,7 +9,11 @@ async function getJson(url: string) {
 }
 
 
-export async function getHistoricalUsd(tsSec: number, _cache: PriceCache): Promise<number | undefined> {
+export async function getHistoricalUsd(tsSec: number, cache: PriceCache): Promise<number | undefined> {
+  // Check cache first
+  const cached = cache.getCached(tsSec);
+  if (cached !== undefined) return cached;
+
   const url = `${CC_BASE}/data/pricehistorical?fsym=ALGO&tsyms=USD&ts=${tsSec}`;
   let retry = 0;
   const maxRetries = 3;
@@ -17,6 +21,8 @@ export async function getHistoricalUsd(tsSec: number, _cache: PriceCache): Promi
     const data = await getJson(url);
     const p = data?.ALGO?.USD;
     if (typeof p === 'number') {
+      // Update cache
+      cache.set(tsSec, p);
       return p;
     }
     retry++;

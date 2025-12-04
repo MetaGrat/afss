@@ -6,23 +6,23 @@ import { getHistoricalUsd } from './priceFetcher';
 export class DataProcessor {
   private priceCache = new PriceCache();
 
-  constructor() {}
+  constructor() { }
 
   async processWithConcurrency<T, R>(
-    items: T[], 
-    worker: (item: T) => Promise<R>, 
+    items: T[],
+    worker: (item: T) => Promise<R>,
     limit: number = 6
   ): Promise<R[]> {
     const results: R[] = [];
     let i = 0;
     const pool = new Set<Promise<unknown>>();
-    
+
     return new Promise((resolve, reject) => {
       const pump = () => {
         if (i >= items.length && pool.size === 0) {
           return resolve(results);
         }
-        
+
         while (i < items.length && pool.size < limit) {
           const idx = i++;
           const item = items[idx];
@@ -45,6 +45,10 @@ export class DataProcessor {
     return this.processWithConcurrency(
       rows,
       async (row) => {
+        // If price is already present (e.g. from historic CSV), skip fetching
+        if (row.price !== undefined && row.usd !== undefined) {
+          return row;
+        }
 
         const price = await getHistoricalUsd(row.time, this.priceCache);
         const usd = price != null ? row.algo * price : undefined;
